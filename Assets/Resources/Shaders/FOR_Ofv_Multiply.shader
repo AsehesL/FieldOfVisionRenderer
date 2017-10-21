@@ -34,26 +34,26 @@ Shader "Hidden/FieldOfRange/FOR_Ofv_Multiply"
 	sampler2D _DepthTex;
 	fixed _Fade;
 
-	float4x4 internalWorldToCamera;
+	//float4x4 internalWorldToCamera;
 	float4x4 internalCameraToProj;
 	half _Range;
 
 	v2f_fov vert_fov(appdata_fov v)
 	{
 		v2f_fov o;
-		float4 worldPos = mul(unity_ObjectToWorld, v.vertex);
 		o.vertex = UnityObjectToClipPos(v.vertex);
 		o.uv = v.uv;
 		UNITY_TRANSFER_FOG(o, o.vertex);
 		o.color = v.color;
 
-		worldPos = mul(internalWorldToCamera, worldPos);
+		float4 camPos = v.vertex;
+		camPos.z *= -1;
 
-		o.depth = -worldPos.z / _Range;
+		o.depth = -camPos.z / _Range;
 
-		worldPos = mul(internalCameraToProj, worldPos);
+		camPos = mul(internalCameraToProj, camPos);
 
-		o.proj = ComputeScreenPos(worldPos);
+		o.proj = ComputeScreenPos(camPos);
 
 		return o;
 	}

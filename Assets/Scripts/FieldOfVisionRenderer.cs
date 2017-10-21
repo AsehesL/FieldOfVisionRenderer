@@ -104,7 +104,7 @@ public class FieldOfVisionRenderer : MonoBehaviour
 
     private bool m_IsInitialized;
 
-    private Matrix4x4 m_WToCMatrix;
+    //private Matrix4x4 m_WToCMatrix;
     private Matrix4x4 m_ProjMatrix;
 
     private Shader m_RenderShader;
@@ -117,11 +117,11 @@ public class FieldOfVisionRenderer : MonoBehaviour
 
     void OnRenderObject()
     {
-        if (m_DepthRenderCamera.worldToCameraMatrix != m_WToCMatrix)
-        {
-            m_Material.SetMatrix("internalWorldToCamera", m_DepthRenderCamera.worldToCameraMatrix);
-            m_WToCMatrix = m_DepthRenderCamera.worldToCameraMatrix;
-        }
+//        if (m_DepthRenderCamera.worldToCameraMatrix != m_WToCMatrix)
+//        {
+//            m_Material.SetMatrix("internalWorldToCamera", m_DepthRenderCamera.worldToCameraMatrix);
+//            m_WToCMatrix = m_DepthRenderCamera.worldToCameraMatrix;
+//        }
         if (m_DepthRenderCamera.projectionMatrix != m_ProjMatrix)
         {
             m_Material.SetMatrix("internalCameraToProj", m_DepthRenderCamera.projectionMatrix);
@@ -209,10 +209,10 @@ public class FieldOfVisionRenderer : MonoBehaviour
         RefreshMesh();
         RefreshCamera();
 
-        m_Material.SetMatrix("internalWorldToCamera", m_DepthRenderCamera.worldToCameraMatrix);
+        //m_Material.SetMatrix("internalWorldToCamera", m_DepthRenderCamera.worldToCameraMatrix);
         m_Material.SetMatrix("internalCameraToProj", m_DepthRenderCamera.projectionMatrix);
 
-        m_WToCMatrix = m_DepthRenderCamera.worldToCameraMatrix;
+        //m_WToCMatrix = m_DepthRenderCamera.worldToCameraMatrix;
         m_ProjMatrix = m_DepthRenderCamera.projectionMatrix;
 
         m_IsInitialized = true;
