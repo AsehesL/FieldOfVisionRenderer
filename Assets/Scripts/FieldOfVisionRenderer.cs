@@ -36,15 +36,6 @@ public class FieldOfVisionRenderer : MonoBehaviour
     }
 
     /// <summary>
-    /// 淡出
-    /// </summary>
-    public float fade
-    {
-        get { return m_Fade; }
-        set { ResetFade(value); }
-    }
-
-    /// <summary>
     /// 颜色
     /// </summary>
     public Color color
@@ -85,14 +76,13 @@ public class FieldOfVisionRenderer : MonoBehaviour
 
     [SerializeField, Range(0.01f, 179.999f)] private float m_Angle;
     [SerializeField] private float m_Radius;
-    [SerializeField] private float m_Fade;
     [SerializeField] private LayerMask m_CullingMask;
     [SerializeField] private Color m_Color;
     [SerializeField] private BlendMode m_BlendMode;
     [SerializeField] private Texture2D m_Texture;
-
-    private MeshFilter m_MeshFilter;
-    private Camera m_DepthRenderCamera;
+    
+    private Mesh m_Mesh;
+    public Camera m_DepthRenderCamera;
     private RenderTexture m_DepthTexture;
     private List<Vector3> m_VertexList = new List<Vector3>();
     private List<Vector2> m_UVList = new List<Vector2>();
@@ -105,7 +95,8 @@ public class FieldOfVisionRenderer : MonoBehaviour
     private bool m_IsInitialized;
 
     //private Matrix4x4 m_WToCMatrix;
-    private Matrix4x4 m_ProjMatrix;
+    //private Matrix4x4 m_ProjMatrix;
+    private Vector4 m_Params = default(Vector4);
 
     private Shader m_RenderShader;
     private Shader m_DepthRenderShader;
@@ -122,17 +113,25 @@ public class FieldOfVisionRenderer : MonoBehaviour
 //            m_Material.SetMatrix("internalWorldToCamera", m_DepthRenderCamera.worldToCameraMatrix);
 //            m_WToCMatrix = m_DepthRenderCamera.worldToCameraMatrix;
 //        }
-        if (m_DepthRenderCamera.projectionMatrix != m_ProjMatrix)
+        if (m_DepthRenderCamera.projectionMatrix.m00 != m_Params.y)
         {
-            m_Material.SetMatrix("internalCameraToProj", m_DepthRenderCamera.projectionMatrix);
-            m_ProjMatrix = m_DepthRenderCamera.projectionMatrix;
+            m_Params[1] = m_DepthRenderCamera.projectionMatrix.m00;
+            m_Material.SetVector("_FORParams", m_Params);
         }
+    }
+
+    void Update()
+    {
+        if(m_Material && m_Mesh)
+            Graphics.DrawMesh(m_Mesh, transform.localToWorldMatrix, m_Material, gameObject.layer);
     }
 
     void OnDestroy()
     {
-        if (m_MeshFilter && m_MeshFilter.sharedMesh)
-            Destroy(m_MeshFilter.sharedMesh);
+        //if (m_MeshFilter && m_MeshFilter.sharedMesh)
+        //    Destroy(m_MeshFilter.sharedMesh);
+        if (m_Mesh)
+            Destroy(m_Mesh);
         if (m_DepthTexture)
             Destroy(m_DepthTexture);
         m_DepthTexture = null;
@@ -181,15 +180,16 @@ public class FieldOfVisionRenderer : MonoBehaviour
         if (!CheckSupport())
             return;
 
-        MeshRenderer mr = gameObject.AddComponent<MeshRenderer>();
-        mr.hideFlags = HideFlags.HideInHierarchy | HideFlags.HideInInspector;
+        //MeshRenderer mr = gameObject.AddComponent<MeshRenderer>();
+        //mr.hideFlags = HideFlags.HideInHierarchy | HideFlags.HideInInspector;
         m_Material = new Material(m_RenderShader);
-        mr.sharedMaterial = m_Material;
+        //mr.sharedMaterial = m_Material;
 
         if (m_Texture)
             m_Material.SetTexture("_MainTex", m_Texture);
 
-        m_MeshFilter = gameObject.AddComponent<MeshFilter>();
+        //m_MeshFilter = gameObject.AddComponent<MeshFilter>();
+        
 
         m_DepthRenderCamera = gameObject.AddComponent<Camera>();
         m_DepthRenderCamera.hideFlags = HideFlags.HideInHierarchy | HideFlags.HideInInspector;
@@ -204,16 +204,16 @@ public class FieldOfVisionRenderer : MonoBehaviour
         m_DepthRenderCamera.SetReplacementShader(m_DepthRenderShader, "RenderType");
 
         m_Material.SetTexture("_DepthTex", m_DepthTexture);
-        m_Material.SetFloat("_Fade", m_Fade);
 
         RefreshMesh();
         RefreshCamera();
 
         //m_Material.SetMatrix("internalWorldToCamera", m_DepthRenderCamera.worldToCameraMatrix);
-        m_Material.SetMatrix("internalCameraToProj", m_DepthRenderCamera.projectionMatrix);
+        m_Params[1] = m_DepthRenderCamera.projectionMatrix.m00;
+        m_Material.SetVector("_FORParams", m_Params);
 
         //m_WToCMatrix = m_DepthRenderCamera.worldToCameraMatrix;
-        m_ProjMatrix = m_DepthRenderCamera.projectionMatrix;
+        //m_ProjMatrix = m_DepthRenderCamera.projectionMatrix;
 
         m_IsInitialized = true;
     }
@@ -244,14 +244,6 @@ public class FieldOfVisionRenderer : MonoBehaviour
         RefreshMesh();
     }
 
-    private void ResetFade(float fade)
-    {
-        if (m_Fade == fade) return;
-        m_Fade = fade;
-        if (!m_IsInitialized) return;
-        m_Material.SetFloat("_Fade", m_Fade);
-    }
-
     private void ResetTexture(Texture2D texture)
     {
         if (m_Texture == texture) return;
@@ -265,18 +257,18 @@ public class FieldOfVisionRenderer : MonoBehaviour
     /// </summary>
     private void RefreshMesh()
     {
-        float currentAngle = Mathf.Clamp(m_Angle, 0, 360);
+        float currentAngle = Mathf.Clamp(m_Angle, 0, 179.999f);
         int cell = Mathf.CeilToInt(currentAngle / 18);
 
         float beginAngle = 90 - currentAngle / 2;
 
         float deltaAngle = currentAngle / cell;
-        if (m_MeshFilter.sharedMesh == null)
+        if (m_Mesh == null)
         {
-            m_MeshFilter.sharedMesh = new Mesh();
-            m_MeshFilter.sharedMesh.MarkDynamic();
+            m_Mesh = new Mesh();
+            m_Mesh.MarkDynamic();
         }
-        m_MeshFilter.sharedMesh.Clear();
+        m_Mesh.Clear();
         
         if (m_CellCount != cell)
         {
@@ -349,10 +341,10 @@ public class FieldOfVisionRenderer : MonoBehaviour
             m_Indexes[i*3 + 2] = i*2 + 1;
 
         }
-        m_MeshFilter.sharedMesh.SetVertices(m_VertexList);
-        m_MeshFilter.sharedMesh.SetUVs(0, m_UVList);
-        m_MeshFilter.sharedMesh.SetColors(m_ColorList);
-        m_MeshFilter.sharedMesh.SetTriangles(m_Indexes, 0);
+        m_Mesh.SetVertices(m_VertexList);
+        m_Mesh.SetUVs(0, m_UVList);
+        m_Mesh.SetColors(m_ColorList);
+        m_Mesh.SetTriangles(m_Indexes, 0);
     }
 
     /// <summary>
@@ -362,7 +354,8 @@ public class FieldOfVisionRenderer : MonoBehaviour
     {
         if (m_DepthRenderCamera.farClipPlane != m_Radius)
         {
-            m_Material.SetFloat("_Range", m_Radius);
+            m_Params[0] = m_Radius;
+            m_Material.SetVector("_FORParams", m_Params);
         }
         m_DepthRenderCamera.farClipPlane = m_Radius;
         m_DepthRenderCamera.fieldOfView = Mathf.Atan(0.5f/m_Radius)*2*Mathf.Rad2Deg;
